@@ -72,7 +72,7 @@
 function dispararConversaoCompra() {
     gtag('event', 'conversion', {
         'send_to': 'AW-18420984078/FZPkCKfelYYdEI7S589E',
-        'value': 30.0, 
+        'value': 10.90, 
         'currency': 'BRL',
         'transaction_id': 'PIX_' + new Date().getTime() 
     });
@@ -116,13 +116,13 @@ function dispararConversaoCompra() {
             QUERO GARANTIR MEU ACESSO <i class="fa-solid fa-arrow-right"></i>
         </button>
 
-        <!-- Formulário de Checkout PIX Customizado -->
+        <!-- Formulário de Checkout -->
         <div id="checkout-area" class="escondido w-full max-w-lg bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden mb-10">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-emerald-400 to-cyan-400"></div>
             
             <div class="text-center mb-6">
                 <h2 class="text-xl font-bold text-white mb-2">Liberação Imediata</h2>
-                <p class="text-sm text-slate-400">Preencha os seus dados abaixo para receber o acesso instantâneo ao painel.</p>
+                <p class="text-sm text-slate-400">Preencha os seus dados abaixo para prosseguir com o pagamento.</p>
             </div>
             
             <div class="space-y-4">
@@ -144,9 +144,17 @@ function dispararConversaoCompra() {
                     <input type="text" id="website_hp" tabindex="-1" autocomplete="off">
                 </div>
 
+                <!-- AÇÃO PRINCIPAL: GERAR PIX NA TELA -->
                 <button id="btn-gerar-pix" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2">
-                    <i class="fa-brands fa-pix"></i> GERAR PIX
+                    <i class="fa-brands fa-pix"></i> GERAR PIX (APROVAÇÃO IMEDIATA)
                 </button>
+
+                <!-- AÇÃO SECUNDÁRIA: CARTÃO / OUTROS MEIOS -->
+                <div class="text-center pt-2">
+                    <button type="button" id="btn-checkout-externo" class="text-xs text-slate-400 hover:text-emerald-400 underline transition-colors">
+                        <i class="fa-solid fa-credit-card mr-1"></i> Prefere pagar com Cartão de Crédito ou Boleto? Clique aqui
+                    </button>
+                </div>
             </div>
 
             <!-- Área de Resultado do PIX -->
@@ -220,27 +228,33 @@ function dispararConversaoCompra() {
             document.getElementById('checkout-area').scrollIntoView({ behavior: 'smooth' });
         });
 
-        // Envio do Checkout e Tratamento Dinâmico da Resposta do n8n
-        document.getElementById('btn-gerar-pix').addEventListener('click', function() {
-            if (document.getElementById('website_hp').value !== "") return;
+        function coletarEValidarDados() {
+            if (document.getElementById('website_hp').value !== "") return null;
 
             const nome = document.getElementById('nome').value.trim();
             const email = document.getElementById('email').value.trim();
             const cpf = document.getElementById('cpf').value.trim();
-            const btn = document.getElementById('btn-gerar-pix');
 
             if (!nome || !email || !cpf) {
                 alert("Por favor, preencha todos os campos para continuar.");
-                return;
+                return null;
             }
             if (!validarEmail(email)) {
                 alert("Por favor, informe um e-mail válido.");
-                return;
+                return null;
             }
             if (!validarCPF(cpf)) {
                 alert("Por favor, informe um CPF válido.");
-                return;
+                return null;
             }
+
+            return { nome, email, cpf };
+        }
+
+        // 1. Gerar Pix Direto na Tela
+        document.getElementById('btn-gerar-pix').addEventListener('click', function() {
+            const dados = coletarEValidarDados();
+            if (!dados) return;
 
             const ultimoEnvio = localStorage.getItem('last_pix_request');
             const agora = new Date().getTime();
@@ -250,7 +264,8 @@ function dispararConversaoCompra() {
             }
             localStorage.setItem('last_pix_request', agora);
 
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> A processar...';
+            const btn = document.getElementById('btn-gerar-pix');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> A processar Pix...';
             btn.classList.add('opacity-80', 'cursor-not-allowed');
 
             const webhookCheckout = "https://n8n.apps.boulevinco.com.br/webhook/checkout";
@@ -258,25 +273,19 @@ function dispararConversaoCompra() {
             fetch(webhookCheckout, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome: nome, email: email, cpf: cpf })
+                body: JSON.stringify(dados)
             })
             .then(res => res.json())
             .then(data => {
-                console.log("Resposta recebida do n8n:", data); // Para depuração no Console (F12)
-
                 document.querySelector('.space-y-4').classList.add('escondido');
                 document.getElementById('resultado-pix').classList.remove('escondido');
 
-                // Varredura flexível para encontrar o QR Code (Base64 ou Link de Imagem)
                 const qrBase64 = data.qr_code_base64 || data.qrCodeBase64 || data.encodedImage || data.image;
                 const qrCopyPaste = data.qr_code || data.qrCode || data.copiaECola || data.ticketUrl || data.point_of_interaction?.transaction_data?.qr_code;
 
                 if (qrBase64) {
-                    // Verifica se já veio com o prefixo data:image ou se é puro base64
                     const imgSrc = qrBase64.startsWith('data:image') ? qrBase64 : 'data:image/jpeg;base64,' + qrBase64;
                     document.getElementById('qr-code-img').src = imgSrc;
-                } else {
-                    console.warn("Aviso: Nenhuma imagem de QR Code foi identificada na resposta.");
                 }
 
                 if (qrCopyPaste) {
@@ -288,8 +297,39 @@ function dispararConversaoCompra() {
             .catch(error => {
                 console.error("Erro:", error);
                 alert("Erro ao conectar com o servidor. Tente novamente.");
-                btn.innerHTML = '<i class="fa-brands fa-pix"></i> TENTAR NOVAMENTE';
+                btn.innerHTML = '<i class="fa-brands fa-pix"></i> GERAR PIX (APROVAÇÃO IMEDIATA)';
                 btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            });
+        });
+
+        // 2. Checkout Externo (Redirecionamento)
+        document.getElementById('btn-checkout-externo').addEventListener('click', function() {
+            const dados = coletarEValidarDados();
+            if (!dados) return;
+
+            const btnExt = document.getElementById('btn-checkout-externo');
+            btnExt.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> A redirecionar...';
+
+            const webhookExterno = "https://n8n.apps.boulevinco.com.br/webhook/checkout-externo";
+
+            fetch(webhookExterno, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.init_point) {
+                    window.location.href = data.init_point;
+                } else {
+                    alert("Erro ao gerar link de pagamento externo. Tente novamente.");
+                    btnExt.innerHTML = '<i class="fa-solid fa-credit-card mr-1"></i> Prefere pagar com Cartão de Crédito ou Boleto? Clique aqui';
+                }
+            })
+            .catch(error => {
+                console.error("Erro:", error);
+                alert("Erro de conexão. Tente novamente.");
+                btnExt.innerHTML = '<i class="fa-solid fa-credit-card mr-1"></i> Prefere pagar com Cartão de Crédito ou Boleto? Clique aqui';
             });
         });
 
@@ -301,12 +341,15 @@ function dispararConversaoCompra() {
         }
     </script>
 
+    <!-- ANALYTICS OTIMIZADO: REGISTRA VISITA UMA ÚNICA VEZ POR SESSÃO -->
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const utmSource = urlParams.get('utm_source') || 'organico';
         const utmCampaign = urlParams.get('utm_campaign') || 'sem_campanha';
         
         let sessionId = localStorage.getItem('lead_session_id');
+        let jaRegistrouVisita = localStorage.getItem('visita_registrada');
+
         if (!sessionId) {
             sessionId = 'lead_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('lead_session_id', sessionId);
@@ -314,18 +357,22 @@ function dispararConversaoCompra() {
 
         const webhookAnalytics = "https://n8n.apps.boulevinco.com.br/webhook/digistore-vendas";
 
-        fetch(webhookAnalytics, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                evento: 'visita_vsl',
-                sessao_id: sessionId,
-                utm_source: utmSource,
-                utm_campaign: utmCampaign,
-                status: 'Foi para VSL',
-                timestamp: new Date().toISOString()
-            })
-        }).catch(error => console.error('Erro ao registar lead:', error));
+        if (!jaRegistrouVisita) {
+            localStorage.setItem('visita_registrada', 'true');
+
+            fetch(webhookAnalytics, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    evento: 'visita_vsl',
+                    sessao_id: sessionId,
+                    utm_source: utmSource,
+                    utm_campaign: utmCampaign,
+                    status: 'Foi para VSL',
+                    timestamp: new Date().toISOString()
+                })
+            }).catch(error => console.error('Erro ao registrar lead:', error));
+        }
     </script>
     
 </body>
