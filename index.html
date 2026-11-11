@@ -151,13 +151,13 @@ function dispararConversaoCompra() {
                 <button id="btn-gerar-pix" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2">
                     <i class="fa-brands fa-pix"></i> GERAR PIX (APROVAÇÃO IMEDIATA)
                 </button>
+            </div>
 
-                <!-- AÇÃO SECUNDÁRIA: CARTÃO / OUTROS MEIOS -->
-                <div class="text-center pt-2">
-                    <button type="button" id="btn-checkout-externo" class="text-xs text-slate-400 hover:text-emerald-400 underline transition-colors">
-                        <i class="fa-solid fa-credit-card mr-1"></i> Prefere pagar com Cartão de Crédito ou Boleto? Clique aqui
-                    </button>
-                </div>
+            <!-- AÇÃO SECUNDÁRIA: CARTÃO / OUTROS MEIOS (FORA DA DIV OCULTÁVEL) -->
+            <div class="text-center pt-4 mt-4 border-t border-slate-800" id="container-cartao-externo">
+                <button type="button" id="btn-checkout-externo" class="text-xs text-slate-400 hover:text-emerald-400 underline transition-colors">
+                    <i class="fa-solid fa-credit-card mr-1"></i> Prefere pagar com Cartão de Crédito ou Boleto? Clique aqui
+                </button>
             </div>
 
             <!-- Área de Resultado do PIX -->
